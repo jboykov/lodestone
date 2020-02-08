@@ -5,6 +5,8 @@ const { Client } = require('@elastic/elasticsearch');
 const client = new Client({ node: 'http://elasticsearch:9200' });
 const fetch = require('node-fetch');
 
+var amqp = require('amqplib');
+
 /* GET status listing. */
 router.get('/', async function(req, res, next) {
     try {
@@ -52,6 +54,27 @@ router.get('/', async function(req, res, next) {
     } catch (error) {
         next(error);
     }
+});
+
+router.get('/errors', function(req, res, next) {
+
+    return this.rabbitmqClient = amqp.connect(`amqp://${process.env.RABBITMQ_USER}:${process.env.RABBITMQ_PASS}@rabbitmq:5672`)
+        .then(function(conn) {
+            return conn.createChannel();
+        })
+
+        .then(function(chan){
+            console.log("Created channel")
+            return chan.consume('errors', function(msg) {
+                if(msg.content) {
+                    console.log(" [x] %s", msg.content.toString());
+                    res.json({content: msg.content.toString()})
+                }
+            },{
+                noAck: true
+            });
+        })
+        .finally(console.log)
 });
 
 
